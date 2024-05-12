@@ -1,13 +1,26 @@
 from django.shortcuts import get_list_or_404, get_object_or_404
 from rest_framework import viewsets
+from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import (
     CustomTokenObtainPairSerializer,
-    Userserializer,
+    UserListserializer,
 )
 from django.contrib.auth import get_user_model
 
+
+
+class UserView(APIView):
+    def get(self, request, pk=None):
+        if pk:
+            user = get_object_or_404(get_user_model(), pk=pk)
+
+        else:
+            pass
+
+    def post(self, request):
+        pass
 
 
 # class UserViewSet(viewsets.ViewSet):
@@ -38,9 +51,9 @@ from django.contrib.auth import get_user_model
 #         pass
 
 
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = get_user_model().objects.all()
-    serializer_class = Userserializer
+# class UserViewSet(viewsets.ModelViewSet):
+#     queryset = get_user_model().objects.all()
+#     serializer_class = Userserializer
 
 
 class Login(TokenObtainPairView):
