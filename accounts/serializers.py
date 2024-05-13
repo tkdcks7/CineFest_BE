@@ -9,7 +9,7 @@ from rest_framework_simplejwt.serializers import (
 class UserListserializer(serializers.ModelSerializer):
     class Meta:
         model = get_user_model()
-        feilds = ('email', 'nickname', 'usertier', 'point',)
+        fields = ('email', 'nickname', 'usertier', 'point',)
 
 
 class Userserializer(serializers.ModelSerializer):
@@ -17,7 +17,7 @@ class Userserializer(serializers.ModelSerializer):
         pass
     class Meta:
         model = get_user_model()
-        feilds = ('email', 'nickname', 'usertier', 'point',)
+        fields = ('email', 'nickname', 'usertier', 'point',)
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
