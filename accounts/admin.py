@@ -8,7 +8,7 @@ from django.contrib.auth.models import Group    # admin page에서 사용자 그
 from .models import User, Badage
 
 
-
+'''
 class UserCreationForm(forms.ModelForm):
     """A form for creating new users. Includes all the required
     fields, plus a repeated password."""
@@ -117,3 +117,4 @@ admin.site.register(User, UserAdmin)
 # ... and, since we're not using Django's built-in permissions,
 # unregister the Group model from admin.
 admin.site.unregister(Group)
+'''

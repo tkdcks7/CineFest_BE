@@ -6,8 +6,8 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 class Badage(models.Model):
     class Tierlist(models.IntegerChoices):
-        IRON, BRONZE, SILVER, GOLD, PLATINUM, EMERALD, DIAMOND, MASTER, GRANDMASTER, CHALLENGER = list(range(1, 11))
-    tier = models.IntegerField(choices=Tierlist)
+        IRON, BRONZE, SILVER, GOLD, PLATINUM, EMERALD, DIAMOND, MASTER, GRANDMASTER, CHALLENGER = tuple(range(1, 11))
+    tier = models.IntegerField(choices=Tierlist.choices)
 
 class UserManager(BaseUserManager):
     def create_user(self, username, nickname, email, password=None):
@@ -38,7 +38,6 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser):
-    username = models.CharField("아이디", max_length=30, unique=True)
     password = models.CharField("비밀번호", max_length=255)
     nickname = models.CharField(max_length=30, unique=False)
     usertier = models.ForeignKey(Badage, on_delete=models.SET_NULL, null=True,)
@@ -64,7 +63,7 @@ class User(AbstractBaseUser):
 
     USERNAME_FIELD = "email"
     EMAIL_FIELD = "email"
-    REQUIRED_FIELDS = ["nickname", "username", "password"]
+    REQUIRED_FIELDS = ["nickname", "password"]
 
     def __str__(self):
         return (self.email + '   nickname: ' + self.nickname)

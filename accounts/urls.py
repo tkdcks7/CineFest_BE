@@ -16,15 +16,9 @@ Including another URLconf
 """
 
 
-from rest_framework.routers import DefaultRouter
 from django.urls import path, include
 from . import views
 
-router = DefaultRouter()
-router.register(r'users', views.UserViewSet, basename='user')
-urlpatterns = router.urls
-
 
 urlpatterns = [
-    path('', include(router.urls)), 
 ]
