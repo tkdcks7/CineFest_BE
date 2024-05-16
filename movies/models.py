@@ -8,21 +8,22 @@ class Genre(models.Model):
     name = models.CharField(max_length=60)
 
 class Movie(models.Model):
-    tmdb_id = models.IntegerField('영화 번호', validators=MinValueValidator(0), unique=True)
+    tmdb_id = models.IntegerField('영화 번호', validators=[MinValueValidator(0),], unique=True)
     title = models.CharField('영화 제목', max_length=100)
     genres = models.ManyToManyField(Genre, symmetrical=False, related_name='moives')
     overview = models.TextField('영화 개요')
     original_language = models.CharField('출시 국가', max_length=100)
     release_date = models.DateField('개봉일')
-    popularity = models.FloatField('인기도', validators=MinValueValidator(0), default=0)
-    vote_average = models.FloatField('평점', validators=MinValueValidator(0), default=0)
-    post_path = models.CharField(max_length=300)
+    popularity = models.FloatField('인기도', validators=[MinValueValidator(0),], default=0)
+    vote_average = models.FloatField('평점', validators=[MinValueValidator(0),], default=0)
+    backdrop_path = models.CharField(max_length=500)
     post_image = models.ImageField(
         '포스터 이미지',
         upload_to='poster/%Y/%m/%d',
         blank=True,
         null=True,
     )
+    runtime = models.IntegerField('상영시간', validators=[MinValueValidator(0),], default=0)
     is_adult = models.BooleanField('성인영화 여부', default=True)
 
 
@@ -30,7 +31,7 @@ class Course(models.Model):
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='courses', verbose_name='코스 작성자')
     title = models.CharField('코스명', max_length=200)
     description = models.TextField('내용')
-    vote_total = models.IntegerField('총 투표수', validators=MinValueValidator(0), default=0)
+    vote_total = models.IntegerField('총 투표수', validators=[MinValueValidator(0),], default=0)
     likes = models.ManyToManyField(settings.AUTH_USER_MODEL, symmetrical=False, related_name='liked_courses', verbose_name='좋아요')
     reports = models.ManyToManyField(settings.AUTH_USER_MODEL, symmetrical=False, related_name='reported_courses', verbose_name='신고')
     comments = models.ManyToManyField(settings.AUTH_USER_MODEL, symmetrical=False, through='Comment')
@@ -48,13 +49,13 @@ class Menu(models.Model):
         MAIN = 'main'
         DESSERT = 'dessert'
 
-    type_of_menu = models.CharField('메뉴 종류', choices=MenuType.choices, max_length=10)
+    type_of_menu = models.CharField('메뉴 종류', choices=MenuType.choices, max_length=20)
     title = models.CharField('메뉴 제목', max_length=200)
     description = models.TextField('감상평')
     
 
 class Comment(models.Model):
-    sup_comment = models.ManyToManyField('self', related_name='sub_comments', verbose_name='상위 댓글')
+    sup_comment = models.ManyToManyField('self', verbose_name='상위 댓글')
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='comments', verbose_name='작성자')
     course = models.ForeignKey(Course, on_delete=models.CASCADE, verbose_name='코스')
     comment_image = models.ImageField(

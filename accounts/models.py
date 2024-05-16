@@ -18,28 +18,24 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, username, nickname, email, password):
+    def create_superuser(self, email, password, nickname):
         user = self.create_user(
-            username=username,
-            nickname=nickname,
             email=self.normalize_email(email),
             password=password,
+            nickname=nickname,
         )
         user.is_admin = True
         user.is_active = True
+        user.is_verified = True
         user.save(using=self._db)
         return user
 
 
-class Badge(models.Model):
-    class Tierlist(models.IntegerChoices):
-        IRON, BRONZE, SILVER, GOLD, PLATINUM, EMERALD, DIAMOND, MASTER, GRANDMASTER, CHALLENGER = tuple(range(1, 11))
-    tier = models.IntegerField(choices=Tierlist.choices)
-
 class User(AbstractBaseUser):
+    # username = models.CharField('유저네임인데 안 씀', default='None', max_length=5)
     email = models.EmailField('이메일', unique=True)
     password = models.CharField('비밀번호', max_length=255)
-    nickname = models.CharField('닉네임', max_length=30, unique=False)
+    nickname = models.CharField('닉네임', max_length=100, unique=False)
     profile_img = models.ImageField(
         '프로필 이미지',
         upload_to="profiles/%Y/%m/%d",
@@ -48,8 +44,10 @@ class User(AbstractBaseUser):
     )
 
     point = models.IntegerField('유저 포인트', validators=[MinValueValidator(0), MaxValueValidator(10000000)], default=100)
-    usertier = models.ForeignKey(Badge, on_delete=models.SET_NULL, default=1, verbose_name='유저 등급')
-    blacklist_point = models.IntegerField('유저 강등 점수', validators=MinValueValidator(0), default=0)
+    blacklist_point = models.IntegerField('유저 강등 점수', validators=[MinValueValidator(0),], default=0)
+    class Tierlist(models.IntegerChoices):
+        IRON, BRONZE, SILVER, GOLD, PLATINUM, EMERALD, DIAMOND, MASTER, GRANDMASTER, CHALLENGER = tuple(range(1, 11))
+    tier = models.IntegerField(choices=Tierlist.choices)
     
     recommend_genre = models.ManyToManyField('movies.Genre', symmetrical=False, verbose_name='genre_like_users')
     gender = models.BooleanField('성별', null=True)
@@ -67,7 +65,7 @@ class User(AbstractBaseUser):
 
     USERNAME_FIELD = 'email'
     EMAIL_FIELD = 'email'
-    REQUIRED_FIELDS = ['email', 'nickname', 'password']
+    REQUIRED_FIELDS = ['nickname', 'password']
 
     def __str__(self):
         return (self.email + '   nickname: ' + self.nickname)

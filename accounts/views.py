@@ -1,4 +1,5 @@
 from django.shortcuts import get_list_or_404, get_object_or_404
+from django.http import HttpResponseNotFound, HttpResponseForbidden
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -7,16 +8,21 @@ from .serializers import (
     CustomTokenObtainPairSerializer,
     UserListserializer,
     Userserializer,
+    UsercreateSerializer,
 )
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+
+# Github Social Login용
+# from allauth.socialaccount.providers.github.views import GitHubOAuth2Adapter
+# from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+# from dj_rest_auth.registration.views import SocialLoginView
 
 import random
 
 
 
 class UserView(APIView):
-    @login_required
     def get(self, request, user_pk=None):
         if user_pk: # pk를 받을 시에는 단일 유저 조회
             user = get_object_or_404(get_user_model(), pk=user_pk)
@@ -31,10 +37,10 @@ class UserView(APIView):
     def post(self, request):
         prefix_list = ['활발한', '귀여운', '구슬픈', '애잔한', '멋있는', '즐거운', '침착한', '조용한', '활기찬', '쾌활한', '용감한', '진지한']
         suffix_list = ['쥐돌이', '송아지', '호랑이', '토깽이', '용용이', '뱀뱀이', '망아지', '양양이', '원숭이', '병아리', '댕댕이', '꿀꿀이']
-        auto_created_nickname = prefix_list[random.randint(0, 13)] + ' ' + suffix_list[random.randint(0, 13)] + str(random.randint(1, 1000))
-        serializer = Userserializer(data=request.data, nickname=auto_created_nickname)
+        auto_created_nickname = prefix_list[random.randint(0, 12)] + ' ' + suffix_list[random.randint(0, 12)] + str(random.randint(1, 1000))
+        serializer = UsercreateSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
-            serializer.save()
+            serializer.save(nickname=auto_created_nickname)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     # 계정 수정
@@ -64,3 +70,25 @@ class UserView(APIView):
 # 로그인 시 토큰 발급
 class Login(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+    
+
+class FriendView(APIView):
+    def post(self, request, user_pk):
+        me = request.user
+        you = get_object_or_404(get_user_model(), pk=user_pk)
+        if me != you:
+            is_friend = me.objects.filter(friends=you).exists()
+            if is_friend:
+                me.friends.remove(you)
+            else:
+                me.friends.add(you)
+        else:
+            return HttpResponseForbidden('')
+        return Response({'msg': f'{ "friend deleted" if is_friend else "friend added"}'})
+                
+            
+# Github 로그인용
+# class GitHubLogin(SocialLoginView):
+#     adapter_class = GitHubOAuth2Adapter
+#     callback_url = CALLBACK_URL_YOU_SET_ON_GITHUB
+#     client_class = OAuth2Client

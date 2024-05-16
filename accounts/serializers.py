@@ -17,6 +17,13 @@ class Userserializer(serializers.ModelSerializer):
     class Meta:
         model = get_user_model()
         fields = ('id', 'email', 'nickname', 'usertier', 'point',)
+        
+
+class UsercreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = get_user_model()
+        fields = ('email', 'password', 'nickname', 'usertier', 'point',)
+        read_only_fields = ('nickname',)
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
