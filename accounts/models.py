@@ -32,7 +32,7 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser):
-    # username = models.CharField('유저네임인데 안 씀', default='None', max_length=5)
+    username = models.CharField('유저네임인데 안 씀', default='None', max_length=5)
     email = models.EmailField('이메일', unique=True)
     password = models.CharField('비밀번호', max_length=255)
     nickname = models.CharField('닉네임', max_length=100, unique=False)
@@ -44,13 +44,13 @@ class User(AbstractBaseUser):
     )
 
     point = models.IntegerField('유저 포인트', validators=[MinValueValidator(0), MaxValueValidator(10000000)], default=100)
-    blacklist_point = models.IntegerField('유저 강등 점수', validators=[MinValueValidator(0),], default=0)
     class Tierlist(models.IntegerChoices):
         IRON, BRONZE, SILVER, GOLD, PLATINUM, EMERALD, DIAMOND, MASTER, GRANDMASTER, CHALLENGER = tuple(range(1, 11))
-    tier = models.IntegerField(choices=Tierlist.choices)
+    tier = models.IntegerField(choices=Tierlist.choices, default=1)
     
     recommend_genre = models.ManyToManyField('movies.Genre', symmetrical=False, verbose_name='genre_like_users')
     gender = models.BooleanField('성별', null=True)
+    # 대한민국 휴대전화번호 Regex
     phone_number = models.CharField('휴대전화번호', validators=[RegexValidator(r'010-?[1-9]\d{3}-?\d{4}$')], max_length=13, null=True)
     friends = models.ManyToManyField('self', symmetrical=True, verbose_name='친구')
 

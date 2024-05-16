@@ -22,7 +22,7 @@ class Userserializer(serializers.ModelSerializer):
 class UsercreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = get_user_model()
-        fields = ('email', 'password', 'nickname', 'usertier', 'point',)
+        fields = ('email', 'password', 'nickname',)
         read_only_fields = ('nickname',)
 
 

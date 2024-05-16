@@ -33,6 +33,8 @@ class Course(models.Model):
     description = models.TextField('내용')
     vote_total = models.IntegerField('총 투표수', validators=[MinValueValidator(0),], default=0)
     likes = models.ManyToManyField(settings.AUTH_USER_MODEL, symmetrical=False, related_name='liked_courses', verbose_name='좋아요')
+    is_reported = models.BooleanField('게시글 정지여부', default=False)
+
     reports = models.ManyToManyField(settings.AUTH_USER_MODEL, symmetrical=False, related_name='reported_courses', verbose_name='신고')
     comments = models.ManyToManyField(settings.AUTH_USER_MODEL, symmetrical=False, through='Comment')
 
@@ -55,9 +57,9 @@ class Menu(models.Model):
     
 
 class Comment(models.Model):
-    sup_comment = models.ManyToManyField('self', verbose_name='상위 댓글')
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='comments', verbose_name='작성자')
+    sup_comment = models.ManyToManyField('self', null=True, verbose_name='상위 댓글')
     course = models.ForeignKey(Course, on_delete=models.CASCADE, verbose_name='코스')
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='comments', verbose_name='작성자')
     comment_image = models.ImageField(
         '댓글 이미지',
         upload_to='comment/%Y/%m/%d',

@@ -21,6 +21,7 @@ from .models import Movie, Genre, Course, Menu, Comment
 
 import requests
 import random
+import json
 from django.conf import settings
 
 
@@ -56,23 +57,21 @@ genre_magic_table = [0, 28, 12, 16, 35, 80, 99, 18, 10751, 14, 36, 27, 10402, 96
 
 class MovieView(APIView):
     @login_required
-    def get(self, request, movie_pk=None):
-        if movie_pk:
-            movie = get_object_or_404(Movie, pk=movie_pk)
+    def get(self, request, id=None):
+        if id:
+            movie = get_object_or_404(Movie, pk=id)
             serializer = MovieDetailSerializer(movie)
             return Response(serializer.data)
         else: # 현재 db에 저장된 movielist를 출력. 요청 유저의 선호 장르를 상단으로. 이외의 장르는 
-            stored_movies =Movie.objects.all()
-            
+            stored_movies = Movie.objects.all()
             serializer = MovieListSerializer(stored_movies, many=True)
             if serializer.is_valid(raise_exception=True):
                 serializer.save()
                 return Response(serializer.data)
-            
-    
+
     # @login_required
-    def post(self, request, tmdb_id): # TMDB에서 list로 들고올 때와 detail로 들고올 때 약간 다른 형식의 keyname, value 존재
-        url = f'{TMDB_BASE_URL}movie/{tmdb_id}'
+    def post(self, request, id): # TMDB에서 list로 들고올 때와 detail로 들고올 때 약간 다른 형식의 keyname, value 존재
+        url = f'{TMDB_BASE_URL}movie/{id}'
         headers = {
             'accept': 'application/json',
             'Authorization': f'Bearer {TMDB_API_TOKEN}'
@@ -82,14 +81,14 @@ class MovieView(APIView):
         response = requests.get(url, headers=headers, params=payload)
         data = response.json()
         genre_datas = data.pop('genres')
-        # genres의 value를 dict 에서 integer로. id만 추출
+        # genres의 value를 dict 에서 integer로. id만 추출하여 알맞은 형식으로 변형
         genres = []
         for dt in genre_datas:
             genres.append(dt.get('id'))
         serializer = MovieDetailSerializer(data=data)
         if serializer.is_valid(raise_exception=True):
             movie = serializer.save()
-            for genre in genres:
+            for genre in genres: # 생성된 Movie instance와 Genre간 M:M relation을 만든다. 
                 movie.genres.add(genre)
             # 이미지 저장 로직
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -136,10 +135,9 @@ class CourseView(APIView):
             appetizer_serializer.save(course=course)
             main_serializer.save(course=course)
             dessert_serializer.save(course=course)
+            request.user.point += 10
             return Response(course_info_serializer.data, status=status.HTTP_201_CREATED)
         
-        
-
     @login_required
     def put(self, request, course_pk):
         course = get_object_or_404(Course, pk=course_pk)
@@ -149,12 +147,15 @@ class CourseView(APIView):
     @login_required
     def delete(self, request, course_pk): # course가 삭제되면 menu 또한 삭제되므로, menu 삭제 로직을 만들 필요가 없음.
         course = get_object_or_404(Course, pk=course_pk)
-        if request.user == course.author:
+        if request.user == course.author and not course.is_reported: # 요청자와 작성자가 일치하고, 신고되지 않은 경우에만 삭제 가능
             course.delete()
+            request.user.point -= 10
             return Response({'msg': f'successfully deleted id: {course_pk} course'}, status=status.HTTP_204_NO_CONTENT)
         return HttpResponseForbidden("<h1>You are Not allowed User to Delete This course</h1>")
     
 
+# Menu post: Course 작성 시 생성되므로 없음.
+# Menu delete: Course 삭제 시 on_delete CASCADE라 같이 삭제되므로 없음.
 class MenuView(APIView):
     @login_required
     def get(self, request, menu_pk=None):
@@ -171,6 +172,7 @@ class MenuView(APIView):
             return Response(serializer.data)
         
 
+# 댓글 수정은 기본적으로 지원하지 않을 계획
 class CommentView(APIView):
     @login_required
     def get(self, request, comment_pk=None):
@@ -183,19 +185,23 @@ class CommentView(APIView):
             serializer = CommentSerializer(comments, many=True)
             return Response(serializer.data)
     @login_required
-    def post(self, request, supcomment_pk=None): # 프론트에서 supcomment pk를 보내주면 pk를 받지 않아도 되려나?
+    def post(self, request, course_pk, supcomment_pk=None): # 프론트에서 supcomment pk를 보내주면 pk를 받지 않아도 되려나?
         if supcomment_pk:
-            serializer = CommentSerializer(data=request.data, supcomment=get_object_or_404(Comment, pk=supcomment_pk))
+            course = get_object_or_404(Course, pk=course_pk)
+            supcomment = Comment.objects.get(pk=supcomment_pk) # supcomment_pk가 주어지지 않으면 supcomment = None이므로 null로 저장됨
+            serializer = CommentSerializer(data=request.data)
         else:
             serializer = CommentSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
-            serializer.save()
+            serializer.save(course=course, author=request.user, supcomment=supcomment)
+            request.user.point += 1 # 댓글 작성 시 point 1 증가
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
     @login_required
     def delete(self, request, comment_pk):
-        comment = get_object_or_404(Menu, pk=comment_pk)
-        if request.user == comment.author:
+        comment = get_object_or_404(Comment, pk=comment_pk)
+        if request.user == comment.author or request.user == comment.course.author: # 댓글 작성자 혹은 댓글이 달린 course의 작성자만 삭제 가능
+            comment.author.point -= 2 # 댓글 삭제 시 point 2 감소
             comment.delete()
             return Response({'msg': f'successfully deleted id: {comment_pk} comment'}, status=status.HTTP_204_NO_CONTENT)
         return HttpResponseForbidden('')
@@ -239,5 +245,56 @@ class SearchView(APIView):
             return Response(serializer.data)
             
 
+# 좋아요 기능. Course instance-request user 간 관계가 있으면 삭제, 없으면 생성 후 is_liked를 반환
 class LikeView(APIView):
+    # @login_required
+    def post(self, request, course_pk):
+        course = get_object_or_404(Course, pk=course_pk)
+        user = request.user
+        is_liked = course.likes.filter(pk=user.pk).exists()
+        if is_liked:
+            course.likes.remove(user)
+        else:
+            course.likes.add(user)
+        return Response({'msg': f'{ "canceled like" if is_liked else "like"}', 'is_liked': not is_liked}, status=status.HTTP_200_OK)
     
+
+# 신고 기능. PLATINUM 이상 유저만 신고 가능. 신고 카운트가 10 되면 해당 Course 신고처리 후 Course 작성자가 보유한 포인트 50 삭감.
+class ReportView(APIView):
+    # @login_required
+    def post(self, request, course_pk):
+        user = request.user
+        if request.user.tier < 5:
+            return Response({'msg': 'you have to rank up to use report system.'}, status=status.HTTP_401_UNAUTHORIZED)
+        course = get_object_or_404(Course, pk=course_pk)
+        if course.is_reported:
+            return Response({'msg': 'this Course is already has been reported.'}, status=status.HTTP_400_BAD_REQUEST)
+        if course.reports.filter(pk=user.pk).exists():
+            return Response({'msg': 'you\'ve been already reported this Course.'}, status=status.HTTP_400_BAD_REQUEST)
+        if course.reports.count() == 9:
+            course.is_reported = True
+            course.author.point -= 50
+        course.reports.add(user)
+        return Response({'msg': 'Thank you for your attribution for our restaurant.'}, status=status.HTTP_200_OK)
+    
+
+# 영화 추천 알고리즘
+class RecommendView(APIView):
+    def get(self, request):
+        recommend_methods = request.GET.get('recommend_methods')
+        # recommend_methods에 담긴 데이터가 JSON이라면 아래 주석을 활성화하여 dict으로 변환
+        # recommend_methods = json.loads(recommend_methods)
+
+        recommend_movies = get_list_or_404(Movie) # 추천 영화 시작은 모든 쿼리셋
+        # method 종류는 date, time, weather, gender, selet_genre 등이 있을듯?
+
+        # OpenWeather API로, 도시 이름을 입력받아 사용자 거주 지역의 위도-경도 산출
+        # 위도-경도값을 입력받아, 현재 날씨를 추출
+        # 현재 날씨를 바탕으로 추천 영화 filtering
+        if recommend_methods['weather']: # weather 추천 활성화.
+            pass
+        
+
+
+# DALL-E를 이용한 Course에 있는 영화 3편을 섞은 이미지 생성? 
+# Chat-GPT를 이용한 영화 추천?

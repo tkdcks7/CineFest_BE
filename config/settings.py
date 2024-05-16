@@ -29,7 +29,7 @@ DEBUG = env('DEBUG')
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 TMDB_API_TOKEN = env('TMDB_API_TOKEN')
 TMDB_API_KEY = env('TMDB_API_KEY')
-TMDB_BASE_URL = 'https://api.themoviedb.org/3/'
+TMDB_BASE_URL = env('TMDB_BASE_URL')
 
 # Application definition
 INSTALLED_APPS = [

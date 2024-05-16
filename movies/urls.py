@@ -1,23 +1,15 @@
-"""
-URL configuration for config project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/4.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
 from django.urls import path
 from . import views
 
 urlpatterns = [
     # path('genre_get/', views.GenreView.as_view()),
+    path('', views.MovieView.as_view()),
+    path('<int:id/', views.MovieView.as_view()), # get 요청 시 db에 저장된 movie의 pk, post 요청 시 TMDB API에 사용할 tmdb_id
+    path('course/<int:course_pk>/', views.CourseView.as_view()),
+    path('course/', views.CourseView.as_view()),
+    path('menu/<int:menu_pk>/', views.MenuView.as_view()),
+    path('menu/', views.MenuView.as_view()),
     path('search/', views.SearchView.as_view()),
+    path('like/<int:course_pk>/', views.LikeView.as_view()),
+    path('report/<int:course_pk>/', views.ReportView.as_view()),
 ]

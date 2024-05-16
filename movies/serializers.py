@@ -4,6 +4,7 @@ from .models import Genre, Movie, Course, Menu, Comment
 
 
 class MovieDetailSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Movie
         fields = '__all__'
@@ -11,13 +12,17 @@ class MovieDetailSerializer(serializers.ModelSerializer):
 
 
 class MovieListSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Movie
         fields = ('tmdb_id', 'title',)
 
 
 class CourseDetailSerializer(serializers.ModelSerializer):
-    pass
+    
+    class Meta:
+        model = Course
+        fields = '__all__'
 
 
 class CourseCreateSerializer(serializers.ModelSerializer):
@@ -29,7 +34,11 @@ class CourseCreateSerializer(serializers.ModelSerializer):
 
 
 class CourseListSerializer(serializers.ModelSerializer):
-    pass
+    likes_count = serializers.IntegerField(source='likes.count',)
+    
+    class Meta:
+        model = Course
+        fields = ('id', 'author', 'title',)
 
 
 class MenuSerializer(serializers.ModelSerializer):
@@ -39,7 +48,10 @@ class MenuSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    pass
+    class Meta:
+        model = Comment
+        fields = '__all__'
+        read_only_fields = ('course', 'author',)
 
 
 class SearchSerializer(serializers.Serializer):

@@ -5,7 +5,7 @@ from django.contrib.auth.forms import ReadOnlyPasswordHashField
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import Group    # admin page에서 사용자 그룹 설정을 위한 모델
 
-from .models import User, Badge
+from .models import User
 
 
 '''
