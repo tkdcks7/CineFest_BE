@@ -11,12 +11,12 @@ class Movie(models.Model):
     tmdb_id = models.IntegerField('영화 번호', validators=[MinValueValidator(0),], unique=True)
     title = models.CharField('영화 제목', max_length=100)
     genres = models.ManyToManyField(Genre, symmetrical=False, related_name='moives')
-    overview = models.TextField('영화 개요')
+    overview = models.TextField('영화 개요', blank=True)
     original_language = models.CharField('출시 국가', max_length=100)
     release_date = models.DateField('개봉일')
     popularity = models.FloatField('인기도', validators=[MinValueValidator(0),], default=0)
     vote_average = models.FloatField('평점', validators=[MinValueValidator(0),], default=0)
-    backdrop_path = models.CharField(max_length=500)
+    backdrop_path = models.CharField(max_length=500, blank=True)
     post_image = models.ImageField(
         '포스터 이미지',
         upload_to='poster/%Y/%m/%d',
@@ -24,7 +24,7 @@ class Movie(models.Model):
         null=True,
     )
     runtime = models.IntegerField('상영시간', validators=[MinValueValidator(0),], default=0)
-    is_adult = models.BooleanField('성인영화 여부', default=True)
+    adult = models.BooleanField('성인영화 여부', default=True)
 
 
 class Course(models.Model):

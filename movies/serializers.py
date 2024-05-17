@@ -2,12 +2,11 @@ from rest_framework import serializers
 from .models import Genre, Movie, Course, Menu, Comment
 
 
-
 class MovieDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Movie
-        fields = '__all__'
+        fields = ('title', 'overview',)
         read_only_fields = ('tmdb_id',)
 
 
@@ -56,11 +55,12 @@ class CommentSerializer(serializers.ModelSerializer):
 
 class SearchSerializer(serializers.Serializer):
     adult = serializers.BooleanField()
-    backdrop_path = serializers.CharField(allow_null=True)
+    backdrop_path = serializers.CharField(allow_null=True, allow_blank=True)
     genre_ids = serializers.ListField(
-        child=serializers.IntegerField()
+        child=serializers.IntegerField(),
+        allow_null=True
     )
-    id = serializers.IntegerField()
+    tmdb_id = serializers.IntegerField()
     original_language = serializers.CharField()
     original_title = serializers.CharField()
     overview = serializers.CharField()
@@ -71,3 +71,5 @@ class SearchSerializer(serializers.Serializer):
     video = serializers.BooleanField()
     vote_average = serializers.FloatField()
     vote_count = serializers.IntegerField()
+
+

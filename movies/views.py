@@ -31,24 +31,24 @@ TMDB_API_KEY = settings.TMDB_API_KEY
 TMDB_BASE_URL = settings.TMDB_BASE_URL
 
 # TMDB에서 장르 id 및 장르 이름을 받아오기 위한 view. db에 삽입 후 주석처리로 비활성화. 작동 확인
-# class GenreView(APIView):
-#     def get(self, request):
-#         # TMDB GENRES API에 보낼 requests에 필요한 데이터 작성 
-#         url = f'{TMDB_BASE_URL}genre/movie/list'
-#         headers = {
-#             'accept': 'application/json',
-#             'Authorization': f'Bearer {TMDB_API_TOKEN}'
-#         }
-#         payload = { 'language': 'ko' }
-#         # requests 요청 및 반환값 변환
-#         response = requests.get(url, headers=headers, params=payload)
-#         data = response.json()
-#         print(data)
-#         genre_lst = data['genres']
-#         # 반환된 장르 정보를 순회하면서 DB의 Genre table에 저장
-#         for genre in genre_lst:
-#             Genre.objects.create(tmdb_id=genre['id'], name=genre['name'])
-#         return Response({'msg': '장르 목록이 성공적으로 저장됐습니다.'}, status=status.HTTP_201_CREATED)
+class GenreView(APIView):
+    def get(self, request):
+        # TMDB GENRES API에 보낼 requests에 필요한 데이터 작성 
+        url = f'{TMDB_BASE_URL}genre/movie/list'
+        headers = {
+            'accept': 'application/json',
+            'Authorization': f'Bearer {TMDB_API_TOKEN}'
+        }
+        payload = { 'language': 'ko' }
+        # requests 요청 및 반환값 변환
+        response = requests.get(url, headers=headers, params=payload)
+        data = response.json()
+        print(data)
+        genre_lst = data['genres']
+        # 반환된 장르 정보를 순회하면서 DB의 Genre table에 저장
+        for genre in genre_lst:
+            Genre.objects.create(tmdb_id=genre['id'], name=genre['name'])
+        return Response({'msg': '장르 목록이 성공적으로 저장됐습니다.'}, status=status.HTTP_201_CREATED)
     
 # Sqlite의 Genre table에 저장될 record의 id와, TMDB에서 가져오는 genre의 id를 매칭하는 매직 테이블 선언
 # index를 맞추기 위해 매직 테이블의 0번째 index에 없는 id인 0을 삽입
@@ -56,7 +56,7 @@ genre_magic_table = [0, 28, 12, 16, 35, 80, 99, 18, 10751, 14, 36, 27, 10402, 96
     
 
 class MovieView(APIView):
-    @login_required
+    # @login_required
     def get(self, request, id=None):
         if id:
             movie = get_object_or_404(Movie, pk=id)
@@ -76,20 +76,20 @@ class MovieView(APIView):
             'accept': 'application/json',
             'Authorization': f'Bearer {TMDB_API_TOKEN}'
         }
-        payload = { 'language': 'ko-KR' }
+        payload = { 'language': 'en-US' }
         # requests 요청 및 반환값 변환
         response = requests.get(url, headers=headers, params=payload)
         data = response.json()
-        genre_datas = data.pop('genres')
+        genres = data.pop('genres')
         # genres의 value를 dict 에서 integer로. id만 추출하여 알맞은 형식으로 변형
-        genres = []
-        for dt in genre_datas:
-            genres.append(dt.get('id'))
+        print(data)
         serializer = MovieDetailSerializer(data=data)
+        print('여기까진됨')
         if serializer.is_valid(raise_exception=True):
-            movie = serializer.save()
-            for genre in genres: # 생성된 Movie instance와 Genre간 M:M relation을 만든다. 
-                movie.genres.add(genre)
+            print('여기까지도됨')
+            # movie = serializer.save(tmdb_id=id)
+            # for genre in genres: # 생성된 Movie instance와 Genre간 M:M relation을 만든다. 
+            #     movie.genres.add(get_object_or_404(Genre, tmdb_id=genre['id']))
             # 이미지 저장 로직
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
