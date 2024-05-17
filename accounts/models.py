@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
-
+from allauth.account.adapter import DefaultAccountAdapter
 
 class UserManager(BaseUserManager):
     def create_user(self, nickname, email, password=None):
@@ -32,10 +32,10 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser):
-    username = models.CharField('유저네임인데 안 씀', default='None', max_length=5)
+    # username = models.CharField('유저네임인데 안 씀', unique=False, default='None', max_length=5)
     email = models.EmailField('이메일', unique=True)
     password = models.CharField('비밀번호', max_length=255)
-    nickname = models.CharField('닉네임', max_length=100, unique=False)
+    nickname = models.CharField('닉네임', max_length=255, unique=False)
     profile_img = models.ImageField(
         '프로필 이미지',
         upload_to="profiles/%Y/%m/%d",
@@ -65,7 +65,7 @@ class User(AbstractBaseUser):
 
     USERNAME_FIELD = 'email'
     EMAIL_FIELD = 'email'
-    REQUIRED_FIELDS = ['nickname', 'password']
+    REQUIRED_FIELDS = []
 
     def __str__(self):
         return (self.email + '   nickname: ' + self.nickname)
@@ -73,5 +73,32 @@ class User(AbstractBaseUser):
     @property
     def is_staff(self):
         return self.is_admin
-    
+
+
+class CustomAccountAdapter(DefaultAccountAdapter):
+    def save_user(self, request, user, form, commit=True):
+        """
+        Saves a new `User` instance using information provided in the
+        signup form.
+        """
+        from allauth.account.utils import user_email, user_field # user_username
+        data = form.cleaned_data
+        email = data.get("email")
+        # username = data.get("username")
+        # nickname 필드를 추가
+        nickname = data.get("nickname")
+        user_email(user, email)
+        # user_username(user, username)
+        if nickname:
+            user_field(user, "nickname", nickname)
+        if "password1" in data:
+            user.set_password(data["password1"])
+        else:
+            user.set_unusable_password()
+        # self.populate_username(request, user)
+        if commit:
+        # Ability not to commit makes it easier to derive from
+        # this adapter by adding
+            user.save()
+        return user
 

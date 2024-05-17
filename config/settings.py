@@ -110,13 +110,26 @@ TEMPLATES = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        # 'dj_rest_auth.jwt_auth.JWTCookieAuthentication', # dj-rest-auth용으로 사용
+        # 'dj_rest_auth.jwt_auth.JWTCookieAuthentication', # dj-rest-auth용으로 사용?
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.AllowAny',  # 모든 사용자에게 접근 허용
     )
 }
 
 REST_AUTH = {
     'USE_JWT': True,
+    'JWT_AUTH_HTTPONLY': False,
+    # 'LOGIN_SERIALIZER': 'accounts.serializers.CustomTokenObtainPairSerializer',
+    'REGISTER_SERIALIZER': 'accounts.serializers.CustomRegisterSerializer',
+    # 'JWT_SERIALIZER': 'accounts.serializers.CustomTokenObtainPairSerializer',
+    'JWT_TOKEN_CLAIMS_SERIALIZER': 'accounts.serializers.CustomTokenObtainPairSerializer', # 이것도 선언?
+    # 'USER_DETAILS_SERIALIZER': 'accounts.serializers.CustomUserDetailsSerializer',
 }
+
+# rest-auth와 all-auth 연결에 사용되는 adapter 설정 변경
+ACCOUNT_ADAPTER = 'accounts.models.CustomAccountAdapter'
+
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
@@ -200,7 +213,8 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_LIFETIME": timedelta(minutes=5),
     "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
 
-    "TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainPairSerializer",
+    "TOKEN_OBTAIN_SERIALIZER": "accounts.serializers.CustomTokenObtainPairSerializer",
+    # "TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainPairSerializer",
     "TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSerializer",
     "TOKEN_VERIFY_SERIALIZER": "rest_framework_simplejwt.serializers.TokenVerifySerializer",
     "TOKEN_BLACKLIST_SERIALIZER": "rest_framework_simplejwt.serializers.TokenBlacklistSerializer",
@@ -214,4 +228,9 @@ AUTH_USER_MODEL = 'accounts.User'
 
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
 
-ACCOUNT_EMAIL_REQUIRED = True
+
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None # 유저 username 필드 사용 X
+ACCOUNT_EMAIL_REQUIRED = True            # 유저 email    필드 사용 O
+ACCOUNT_USERNAME_REQUIRED = False        # 유저 username 필드 사용 X
+ACCOUNT_AUTHENTICATION_METHOD = 'email'  # 유저 인증 수단 email 필드 선언
+ACCOUNT_EMAIL_VERIFICATION = 'none' # 회원가입 과정에서 이메일 인증 비활성화

@@ -9,11 +9,12 @@ from django.conf import settings
 from django.conf.urls import static
 from django.conf.urls.static import static
 
-from accounts.views import Login
+from accounts.views import Login # CustomLoginView
 # from accounts.views import GitHubLogin # Github 로그인용
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # path('dj-rest-auth/login/', CustomLoginView.as_view()),
     path('dj-rest-auth/registration/', include('dj_rest_auth.registration.urls')),
     path('dj-rest-auth/', include('dj_rest_auth.urls')),
     path('api/accounts/', include('accounts.urls')),
