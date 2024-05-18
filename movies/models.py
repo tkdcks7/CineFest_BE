@@ -4,8 +4,8 @@ from django.core.validators import MinValueValidator
 
 
 class Genre(models.Model):
-    tmdb_id = models.IntegerField()
-    name = models.CharField(max_length=60)
+    tmdb_id = models.IntegerField(unique=True)
+    name = models.CharField(max_length=60, unique=True)
 
 class Movie(models.Model):
     tmdb_id = models.IntegerField('영화 번호', validators=[MinValueValidator(0),], unique=True)

@@ -42,8 +42,9 @@ class UserView(APIView):
     def post(self, request):
         prefix_list = ['활발한', '귀여운', '구슬픈', '애잔한', '멋있는', '즐거운', '침착한', '조용한', '활기찬', '쾌활한', '용감한', '진지한']
         suffix_list = ['쥐돌이', '송아지', '호랑이', '토깽이', '용용이', '뱀뱀이', '망아지', '양양이', '원숭이', '병아리', '댕댕이', '꿀꿀이']
-        auto_created_nickname = prefix_list[random.randint(0, 12)] + ' ' + suffix_list[random.randint(0, 12)] + str(random.randint(1, 1000))
-        datas = request.data.dict()
+        
+        auto_created_nickname = prefix_list[random.randint(0, 11)] + ' ' + suffix_list[random.randint(0, 11)] + str(random.randint(1, 1000))
+        datas = request.data
         datas['nickname'] = auto_created_nickname
         serializer = UsercreateSerializer(data=datas)
         if serializer.is_valid(raise_exception=True):

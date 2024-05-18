@@ -35,7 +35,7 @@ class User(AbstractBaseUser):
     # username = models.CharField('유저네임인데 안 씀', unique=False, default='None', max_length=5)
     email = models.EmailField('이메일', unique=True)
     password = models.CharField('비밀번호', max_length=255)
-    nickname = models.CharField('닉네임', max_length=255, unique=False)
+    nickname = models.CharField('닉네임', max_length=511, unique=False)
     profile_img = models.ImageField(
         '프로필 이미지',
         upload_to="profiles/%Y/%m/%d",

@@ -3,10 +3,9 @@ from .models import Genre, Movie, Course, Menu, Comment
 
 
 class MovieDetailSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Movie
-        fields = ('title', 'overview',)
+        exclude = ('genres',)
         read_only_fields = ('tmdb_id',)
 
 

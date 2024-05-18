@@ -12,4 +12,6 @@ urlpatterns = [
     path('search/', views.SearchView.as_view()),
     path('like/<int:course_pk>/', views.LikeView.as_view()),
     path('report/<int:course_pk>/', views.ReportView.as_view()),
+    path('ret/', views.RetView.as_view()),
+    path('recommend/', views.RecommendView.as_view()),
 ]

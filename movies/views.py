@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.http import HttpResponseNotFound, HttpResponseForbidden
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.files.base import ContentFile
 
 from .serializers import (
     MovieDetailSerializer, 
@@ -22,6 +24,10 @@ from .models import Movie, Genre, Course, Menu, Comment
 import requests
 import random
 import json
+from io import BytesIO
+import base64
+from datetime import datetime
+from PIL import Image
 from django.conf import settings
 
 
@@ -29,6 +35,10 @@ from django.conf import settings
 TMDB_API_TOKEN = settings.TMDB_API_TOKEN
 TMDB_API_KEY = settings.TMDB_API_KEY
 TMDB_BASE_URL = settings.TMDB_BASE_URL
+TMDB_IMG_URL = settings.TMDB_IMG_URL
+OPENWEATHER_LOCATION_URL = settings.OPENWEATHER_LOCATION_URL
+OPENWEATHER_WEATHER_URL = settings.OPENWEATHER_WEATHER_URL
+OPENWEATHER_API_KEY = settings.OPENWEATHER_API_KEY
 
 # TMDB에서 장르 id 및 장르 이름을 받아오기 위한 view. db에 삽입 후 주석처리로 비활성화. 작동 확인
 class GenreView(APIView):
@@ -39,7 +49,7 @@ class GenreView(APIView):
             'accept': 'application/json',
             'Authorization': f'Bearer {TMDB_API_TOKEN}'
         }
-        payload = { 'language': 'ko' }
+        payload = { 'language': 'ko' } 
         # requests 요청 및 반환값 변환
         response = requests.get(url, headers=headers, params=payload)
         data = response.json()
@@ -53,6 +63,8 @@ class GenreView(APIView):
 # Sqlite의 Genre table에 저장될 record의 id와, TMDB에서 가져오는 genre의 id를 매칭하는 매직 테이블 선언
 # index를 맞추기 위해 매직 테이블의 0번째 index에 없는 id인 0을 삽입
 genre_magic_table = [0, 28, 12, 16, 35, 80, 99, 18, 10751, 14, 36, 27, 10402, 9648, 10749, 878, 10770, 53, 10752, 37]
+genre_name_table = ['', '액션', '모험', '애니메이션', '코미디', '범죄', '다큐멘터리', '드라마', '가족', 
+                    '판타지', '역사', '공포', '음악', '미스터리', '로맨스', 'SF', 'TV 영화', '스릴러', '전쟁', '서부']
     
 
 class MovieView(APIView):
@@ -76,20 +88,22 @@ class MovieView(APIView):
             'accept': 'application/json',
             'Authorization': f'Bearer {TMDB_API_TOKEN}'
         }
-        payload = { 'language': 'en-US' }
+        payload = { 'language': 'ko-KR' } # 한국으로 설정됐는데 overview가 없을 경우에 관한 경우를 추가?
         # requests 요청 및 반환값 변환
         response = requests.get(url, headers=headers, params=payload)
         data = response.json()
         genres = data.pop('genres')
+        backdrop_path = data.get('backdrop_path')
+        if backdrop_path:
+            img_data = requests.get(TMDB_IMG_URL + backdrop_path)
+            image_files = ContentFile(img_data.content, name=f'{data.get('title') + '_poster.jpeg'}')
+            data['post_image'] = image_files
         # genres의 value를 dict 에서 integer로. id만 추출하여 알맞은 형식으로 변형
-        print(data)
         serializer = MovieDetailSerializer(data=data)
-        print('여기까진됨')
         if serializer.is_valid(raise_exception=True):
-            print('여기까지도됨')
-            # movie = serializer.save(tmdb_id=id)
-            # for genre in genres: # 생성된 Movie instance와 Genre간 M:M relation을 만든다. 
-            #     movie.genres.add(get_object_or_404(Genre, tmdb_id=genre['id']))
+            movie = serializer.save(tmdb_id=id)
+            for genre in genres: # 생성된 Movie instance와 Genre간 M:M relation을 만든다. 
+                movie.genres.add(get_object_or_404(Genre, tmdb_id=genre['id']))
             # 이미지 저장 로직
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -285,16 +299,86 @@ class RecommendView(APIView):
         # recommend_methods에 담긴 데이터가 JSON이라면 아래 주석을 활성화하여 dict으로 변환
         # recommend_methods = json.loads(recommend_methods)
 
-        recommend_movies = get_list_or_404(Movie) # 추천 영화 시작은 모든 쿼리셋
         # method 종류는 date, time, weather, gender, selet_genre 등이 있을듯?
+        if recommend_methods.get('mychoices'): # 본인 설정한 장르에 따른 추천
+            genres_choiced = recommend_methods['mychoices']
+            recommend_movies = Movie.objects.filter(genres__name__in=genres_choiced)[:16]
+            serializer = MovieListSerializer(recommend_movies, many=True)
+            return Response(serializer.data)
+        else: # 본인이 선택한 장르에 따른 영화 추천
+            # OpenWeather API로, 도시 이름을 입력받아 사용자 거주 지역의 위도-경도 산출
+            # 위도-경도값을 입력받아, 현재 날씨를 추출
+            # 현재 날씨를 바탕으로 추천 영화 filtering
+            recommend_genres = {'액션', '모험', '애니메이션', '코미디', '범죄', '다큐멘터리', '드라마', '가족', 
+                        '판타지', '역사', '공포', '음악', '미스터리', '로맨스', 'SF', 'TV 영화', '스릴러', '전쟁', '서부'}
+            if recommend_methods.get('weather'): # weather 추천 활성화.
+                # Openweather API를 이용해, 도시 이름을 바탕으로 위치인 latitude(위도), longitude(경도)를 반환하는 로직 작성
+                city = recommend_methods['weather']['city']
+                response_location = requests.get(OPENWEATHER_LOCATION_URL, params={'appid': OPENWEATHER_API_KEY, 'q': city})
+                data_location = response_location.json()
+                lat = data_location.get('lat')
+                lon = data_location.get('lon')
+                # Openweather API를 이용해, lat, lon을 바탕으로 현재 날씨를 받아옴.
+                payload = {
+                    'appid': OPENWEATHER_API_KEY,
+                    'lat': lat,
+                    'lon': lon,
+                    'units': 'metric'
+                }
+                response_weather = requests.get(OPENWEATHER_WEATHER_URL, params=payload)
+                data_weather = response_weather.json()
+                weather_id = data_weather.get('weather').get('id')
+                weather_filter_dict = {
+                    2: ['코미디', '음악', '로맨스', 'TV 영화', '서부'],
+                    3: ['액션', '범죄', '스릴러', '역사', '공포', '서부'],
+                    5: ['코미디', '음악', '로맨스', 'TV 영화', '서부'],
+                    6: ['다큐멘터리', '스릴러', '역사', '미스터리', '공포', '서부'],
+                    7: ['범죄', '다큐멘터리', '스릴러', '역사', '미스터리', '전쟁', '공포'],
+                    8: ['범죄', '스릴러', '역사', '미스터리', '공포'],
+                    9: ['음악', '로맨스', 'TV 영화', '서부'],
+                }
+                # 날씨별 세 자리 id를 추출해 1자리의 숫자로 만듦. https://openweathermap.org/weather-conditions 참고.
+                if weather_id > 802: # 800: 맑음, 803, 804: 구름 많음이라 803, 804에 대한 처리
+                    weather_id = 900
+                weather_id //= 100
+                # 날씨 필터링에 대응되는 장르는 추천 장르에서 제거
+                recommend_genres = recommend_genres - set(weather_filter_dict.get(weather_id)) 
 
-        # OpenWeather API로, 도시 이름을 입력받아 사용자 거주 지역의 위도-경도 산출
-        # 위도-경도값을 입력받아, 현재 날씨를 추출
-        # 현재 날씨를 바탕으로 추천 영화 filtering
-        if recommend_methods['weather']: # weather 추천 활성화.
-            pass
+            # 시간대에 따른 filtering
+            if recommend_methods['times']:
+                now = datetime.now()
+                weekday = now.weekday()
+                hour = now.hour
+                # 6~17, 18~23, 23~익일 5시로 구분
+                if weekday < 5: # 평일인 경우
+                    if 6 <= hour < 18:
+                        hour_filters = {'액션', '모험', '가족', '로맨스', 'TV영화', '공포'}
+                    elif 18 <= hour < 23:
+                        hour_filters = {'다큐멘터리', '범죄', '드라마', '역사', '공포'}
+                    else:
+                        hour_filters = {'음악', '로맨스', 'TV 영화'}
+                    recommend_genres = recommend_genres - hour_filters
+            # 필터링된 추천 장르를 바탕으로 영화 쿼리셋 가져오기
+            recommend_movies = Movie.objects.filter(genres__name__in=recommend_genres)[:16]
         
-
-
 # DALL-E를 이용한 Course에 있는 영화 3편을 섞은 이미지 생성? 
 # Chat-GPT를 이용한 영화 추천?
+
+# Genre table에 있는 record들의 name을 출력하고 response로 보내는 View
+class RetView(APIView):
+    def get(self, request):
+        # genres = Genre.objects.all()
+        # lst = []
+        # for gen in genres:
+        #     lst.append(gen.name)
+        # print(lst)
+        imgurl = 'https://image.tmdb.org/t/p/w500/f5MtI3ZWoCdquEHOdkldlCuHs6t.jpg'
+        data = requests.get(url=imgurl).content
+        print(data)
+        f = open('img.jpg', 'wb')
+        f.write(data)
+        f.close()
+        img = Image.open('img.jpg')
+        img.show()
+        # image_res = Image.open(BytesIO(data.content))
+        return Response({'img':1})
